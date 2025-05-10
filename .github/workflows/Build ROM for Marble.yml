@@ -1,18 +1,19 @@
-﻿name: Build ROM for Marble
+﻿name: Project ZK LITE Builder
 on:
   workflow_dispatch:
     inputs:
+      PLATFORM:
+        description: "ANDROID VERSION"
+        required: true
+      ZK_VER:
+        description: "ZK VERSION"
+        required: true
       URL:
-        description: "待移植包下载地址"
+        description: "XIAOMI.EU ROM URL"
         required: true
-      CUSTOM_VERSION:
-        description: "待打包版本号"
-      VENDOR_URL:
-        description: "底包下载地址"
-        required: true
-        default: 'https://bigota.d.miui.com/V14.0.23.0.TMRCNXM/miui_MARBLE_V14.0.23.0.TMRCNXM_749010fa11_13.0.zip'
+        default: 'https://cdnorg.d.miui.com/OS2.0.5.0.VMRCNXM/marble-ota_full-OS2.0.5.0.VMRCNXM-user-15.0-360119838b.zip'
       IMAGE_TYPE:
-          description: "IMAGE 格式"
+          description: "IMAGE TYPE"
           required: true
           default: 'erofs'
           type: choice
@@ -20,37 +21,30 @@ on:
           - erofs
           - ext4
       EXT_RW:
-          description: 'EXT4 可读写'
+          description: 'EXT4 R/W'
           required: true
           type: boolean
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 最大化构建环境
+      - name: Optimize environment
         uses: easimon/maximize-build-space@master
         with:
           swap-size-mb: 8192
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
-      - name: 检出仓库文件
+      - name: Check out repository files
         uses: actions/checkout@main
-      - name: 准备所需环境
+      - name: Prepare the required environment
         run: |
-          sudo timedatectl set-timezone Asia/Shanghai
-          if [ -n "${{ github.event.inputs.CUSTOM_VERSION }}" ]; then
-              echo "date=${{ github.event.inputs.CUSTOM_VERSION }}" >> $GITHUB_ENV
-          else
-              echo "date=$(echo ${{ github.event.inputs.URL }} | cut -d"/" -f4)" >> $GITHUB_ENV
-          fi
-          echo "vendor_date=$(echo ${{ github.event.inputs.VENDOR_URL }} | cut -d"/" -f4)" >> $GITHUB_ENV
-          echo "device=marble" >> $GITHUB_ENV
+          sudo timedatectl set-timezone Asia/Ho_Chi_Minh
           sudo apt-get install python3 aria2 p7zip-full zstd
-      - name: 构建 ROM
+      - name: Building ROM
         run: |
-          sudo bash "$GITHUB_WORKSPACE"/make.sh ${{ github.event.inputs.URL }} ${{ env.date }} $GITHUB_ENV $GITHUB_WORKSPACE ${{ github.event.inputs.VENDOR_URL }} ${{ github.event.inputs.IMAGE_TYPE }} ${{ github.event.inputs.EXT_RW }}
-      - name: 处理 ROM
+          sudo bash "$GITHUB_WORKSPACE"/make.sh ${{ github.event.inputs.PLATFORM }} ${{ env.date }} $GITHUB_ENV $GITHUB_WORKSPACE ${{ github.event.inputs.URL }} ${{ github.event.inputs.IMAGE_TYPE }} ${{ github.event.inputs.EXT_RW }}
+      - name: Processing ROM
         run: |
           mkdir -p "$GITHUB_WORKSPACE"/GithubRelease
           cd "$GITHUB_WORKSPACE"/GithubRelease
@@ -58,7 +52,7 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           touch file.log
           echo -e "移植版本: ${{ env.date }}\n底包版本: ${{ env.vendor_date }}" > file.log
-      - name: 上传到 Github Release
+      - name: Create Github Release
         uses: ncipollo/release-action@main
         with:
           artifacts: ${{ github.workspace }}/GithubRelease/*
